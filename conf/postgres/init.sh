@@ -16,7 +16,6 @@ psql -U postgres -d 'device_registry' -c "CREATE SCHEMA deviceregistry AUTHORIZA
 
 
 
-
 #for Clas
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
     CREATE USER pgclassvc PASSWORD 'pgclaspass';
