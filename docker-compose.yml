@@ -1,0 +1,343 @@
+version: "3.9"
+x-common: &common
+  networks:
+    - trifecta-bridge
+  restart: always
+  
+services:
+  messaging-zookeeper:
+    <<: *common
+    image: confluentinc/cp-zookeeper:latest
+    container_name: messaging-zookeeper
+    environment:
+      - ZOOKEEPER_SERVER_ID=1
+      - ALLOW_ANONYMOUS_LOGIN=yes
+      - ZOOKEEPER_CLIENT_PORT= 2181
+      - ZOOKEEPER_TICK_TIME= 2000
+    ports:
+      - 2181:2181
+    volumes: 
+      - zookeeper-logs:/var/lib/zookeeper/log:rw
+      - zookeeper-data:/var/lib/zookeeper/data:rw
+    # profiles:
+    #  - donotstart
+
+
+  messaging-kafka:
+    <<: *common
+    image: confluentinc/cp-kafka:latest
+    container_name: messaging-kafka
+    depends_on:
+      - messaging-zookeeper
+    ports:
+      - 9093:9093
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: messaging-zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://messaging-kafka:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    volumes: 
+     - kafka-data:/var/lib/kafka/data:rw
+    # profiles:
+    #  - donotstart
+     
+  postgresql:
+    <<: *common
+    container_name: db-postgres
+    image: bitnami/postgresql:latest
+    volumes:
+      - 'postgresql_data:/bitnami/postgresql'
+      - ./conf/postgres/init.sh:/docker-entrypoint-initdb.d/init-database.sh
+    ports:
+      - "5432:5432"
+    environment:
+      # ALLOW_EMPTY_PASSWORD is recommended only for development.
+      - ALLOW_EMPTY_PASSWORD=yes
+      - POSTGRESQL_POSTGRES_PASSWORD=bitnami
+      # - POSTGRESQL_DATABASE=device_registry
+      # - POSTGRESQL_USERNAME=pgdevregsvc
+      # - POSTGRESQL_PASSWORD=pgdevregpass
+      
+    # profiles:
+    #  - donotstart
+
+
+  pgadmin4:
+    <<: *common
+    container_name: pgadmin4
+    image: dpage/pgadmin4:latest
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin:rw
+      - ./conf/pgadmin/servers.json:/pgadmin4/servers.json
+      - ./conf/pgadmin/pgpass:/pgadmin4/pgpass
+
+    ports:
+      - "85:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=pgadmin4@pgadmin.org
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_CONFIG_SERVER_MODE=False
+
+    # profiles:
+    #  - donotstart
+
+      
+  kafka-ui:
+    <<: *common
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    volumes:
+      - ./conf/proto:/protofiles
+    networks:
+      - trifecta-bridge
+    ports:
+      - "9099:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=messaging-kafka
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=messaging-kafka:9092
+      - KAFKA_CLUSTERS_0_ZOOKEEPER=messaging-zookeeper:2181
+
+      - kafka.clusters.0.serde.0.name=ProtobufFile
+      - kafka.clusters.0.serde.0.properties.protobufFilesDir=/protofiles/
+      - kafka.clusters.0.serde.0.topicKeysPattern=site-publish
+      - kafka.clusters.0.serde.0.topicValuesPattern=site-publish
+      - kafka.clusters.0.serde.0.properties.protobufMessageNameByTopic.site-publish=SitePublish
+
+
+    depends_on:
+     - messaging-zookeeper
+     - messaging-kafka
+     
+    # profiles:
+    #  - donotstart
+     
+  messaging-mqtt:
+    <<: *common
+    image: emqx/emqx:5.0.21
+    container_name: messaging-mqtt
+    volumes:
+      - ./conf/emqx:/opt/emqx/etc/certs/ 
+      - ./conf/emqx/emqx.conf:/opt/emqx/etc/emqx.conf
+    ports:
+      - 8080:8080
+      - 8083:8083
+      - 18083:18083  
+      - 1883:1883
+      - 8081:8081
+      - 8883:8883
+      - 8084:8084
+
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx_ctl", "status"]
+      interval: 5s
+      timeout: 25s
+      retries: 5
+
+    # profiles:
+    #   - donotstart
+
+     
+  trifecta-message-bridge:
+    <<: *common
+    image: message-bridge
+    container_name: trifecta-messagebridge
+    environment:
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=messaging-kafka:9092
+      - KAFKA_BOOTSTRAPADDRESS=messaging-kafka:9092
+      - MQTT_ADDRESS=messaging-mqtt:8083
+    depends_on:
+      - messaging-kafka
+      - messaging-mqtt
+      
+    # profiles:
+    #   - donotstart
+
+
+
+
+     
+   
+  sonarqube_orig:
+    <<: *common
+    image: sonarqube:community
+    container_name: sonarqube
+    depends_on:
+      - postgresql
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://db-postgres:5432/sonar_db?currentSchema=sonar_schema
+      SONAR_JDBC_USERNAME: sonaruser
+      SONAR_JDBC_PASSWORD: sonarpass
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    ports:
+      - "9000:9000"
+    profiles:
+      - donotstart
+
+
+  sonarqube:
+    <<: *common
+    image: sonarqube:community
+    container_name: sonarqube
+    depends_on:
+      - postgresql
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://db-postgres:5432/sonar_db?currentSchema=sonar_schema
+      SONAR_JDBC_USERNAME: sonaruser
+      SONAR_JDBC_PASSWORD: sonarpass
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    ports:
+      - "9000:9000"
+    profiles:
+      - donotstart
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+         
+  db-mongo:
+    <<: *common
+    image: bitnami/mongodb:latest
+    container_name: db-mongo
+    volumes:
+      - mongo-db:/bitnami/mongodb
+    ports:
+      - 27017:27017
+    profiles:
+     - donotstart
+      
+      
+
+  trifecta-device-registry:
+    <<: *common
+    image: dev
+    container_name: trifecta-device-registry
+    ports:
+      - 8085:8085
+    volumes:
+      #- ./files:/home/trif-user/files
+      - nginx-files:/home/trif-user/files
+    environment:
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=messaging-kafka:9092
+      - MQTT_ADDRESS=messaging-mqtt:8083
+      - SPRING_DATA_MONGODB_HOST=db-mongo
+      - EXTERNAL_URL=http://localhost
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db-postgres:5432/device_registry
+      - SPRING_DATASOURCE_USERNAME=pgdevregsvc
+      - SPRING_DATASOURCE_PASSWORD=pgdevregpass
+
+    depends_on:
+      - db-mongo
+      - messaging-kafka
+      
+    profiles:
+      - donotstart
+
+  trifecta-license-service:
+    <<: *common
+    image: license
+    container_name: trifecta-license-service
+    ports:
+      - 8085:8085
+    environment:
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=messaging-kafka:9092
+      - SPRING_DATA_MONGODB_HOST=db-mongo
+      - EXTERNAL_URL=http://localhost
+      - hostId=17ec7230d096c13112fcb5866259d160
+      - hostName=LAPTOP-4OVO3VIG
+      - clsId=
+    depends_on:
+      - db-mongo
+      - messaging-kafka
+      
+    profiles:
+      - donotstart
+
+
+  file-server:
+    <<: *common
+    image: file-server
+    container_name: trifecta-file-server
+    environment:
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=messaging-kafka:9092
+      - SPRING_DATA_MONGODB_HOST=db-mongo
+      - SPRING_DATA_MONGODB_PORT=27017
+    volumes:
+      #- ./files:/home/trif-user/files
+      - nginx-files:/home/trif-user/files
+    ports:
+      - 8090:8090
+    depends_on:
+      - db-mongo
+      - messaging-kafka
+      
+    profiles:
+      - donotstart
+
+  nginx:
+    <<: *common
+    container_name: web-nginx
+    image: nginx-trif
+    ports:
+      - 80:8080
+    volumes:
+      - nginx-files:/app/files
+   #   - ./conf/nginx/certs:/opt/bitnami/nginx/certs
+    #  - ./conf/nginx/files:/app/files
+    #  - ./conf/nginx/ftp:/app/ftp/
+     # - ./conf/nginx/index.html:/app/index.html
+    #  - ./conf/nginx/my_server_block.conf:/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
+    #  - ./config/my_server_block.conf :/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
+    
+    profiles:
+      - donotstart
+
+
+
+
+
+
+      
+volumes:
+  zookeeper-data:
+    driver: local
+  kafka-data:
+    driver: local
+  mongo-db:
+    driver: local
+  zookeeper-logs:
+    driver: local
+  nginx-files:
+    driver: local
+  postgresql_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  sonarqube_data:
+    driver: local
+  sonarqube_extensions:
+    driver: local
+  sonarqube_logs:
+    driver: local
+
+networks:
+  trifecta-bridge:
+        driver: bridge
