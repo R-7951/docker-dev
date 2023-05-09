@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+option java_package = "com.zebra.trifecta.CLAS.site";
+option java_multiple_files = true;
+option java_outer_classname = "SiteNotificationProtobuffOuterClass";
+
+message SiteNotification {
+    string tenant = 1;
+    google.protobuf.Timestamp timestamp = 2;
+    oneof action {
+        Publish publish = 3;
+        Delete delete = 4;
+    }
+    
+     message Publish {
+        uint32 siteId = 1;
+    }
+    
+    message Delete {
+        uint32 siteId = 1;
+    }
+}
