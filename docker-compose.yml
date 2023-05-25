@@ -8,7 +8,7 @@ services:
 
   messaging-kafka:
     <<: *common
-    image: confluentinc/cp-kafka:7.3.0
+    image: confluentinc/cp-kafka:latest
     hostname: messaging-kafka
     container_name: messaging-kafka
     ports:
@@ -29,12 +29,12 @@ services:
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
     volumes:
-      - ./conf/kafka/update_run.sh:/tmp/update_run.sh
       - kafka-data:/var/lib/kafka/data:rw
-    command: "bash -c 'if [ ! -f /tmp/update_run.sh ]; then echo \"ERROR: Did you forget the update_run.sh file that came with this docker-compose.yml file?\" && exit 1 ; else /tmp/update_run.sh && /etc/confluent/docker/run ; fi'"
+
     # profiles:
-    #  - donotstart
+    #   - donotstart
 
 
 
