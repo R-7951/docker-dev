@@ -30,6 +30,7 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      KAFKA_LOG4J_LOGGERS: 'org.apache.kafka.image.loader.MetadataLoader=WARN'
     volumes:
       - kafka-data:/var/lib/kafka/data:rw
 
@@ -151,8 +152,56 @@ services:
 
 
 
-     
-   
+
+
+
+##--- Metrics ----
+
+
+  grafana:
+    <<: *common
+    image: docker.io/bitnami/grafana:latest
+    ports:
+      - '3000:3000'
+    environment:
+      - 'GF_SECURITY_ADMIN_PASSWORD=bitnami'
+    volumes:
+      - grafana_data:/opt/bitnami/grafana/data
+
+    profiles:
+      - donotstart
+
+
+  prometheus:
+    <<: *common
+    image: docker.io/bitnami/prometheus:latest
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./conf/prometheus/prometheus.yml:/opt/bitnami/prometheus/conf/prometheus.yml
+      - prom_data:/opt/bitnami/prometheus/data
+
+    profiles:
+      - donotstart
+
+
+
+  spring-boot-admin:
+    <<: *common
+    image: spring-admin
+    container_name: spring-boot-admin
+    ports:
+      - 8087:8087
+    environment:
+      - server.port=8087
+
+    profiles:
+      - donotstart
+
+
+##--- Metrics ----
+
+
   sonarqube_orig:
     <<: *common
     image: sonarqube:community
@@ -238,7 +287,6 @@ services:
       - SPRING_DATASOURCE_PASSWORD=pgdevregpass
 
     depends_on:
-      - db-mongo
       - messaging-kafka
       
     profiles:
@@ -330,6 +378,10 @@ volumes:
   sonarqube_extensions:
     driver: local
   sonarqube_logs:
+    driver: local
+  grafana_data:
+    driver: local
+  prom_data:
     driver: local
 
 networks:
