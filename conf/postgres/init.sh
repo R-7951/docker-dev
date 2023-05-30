@@ -50,6 +50,7 @@ EOSQL
 
 
 
+
 psql -U postgres -d 'sonar_db' -c "CREATE SCHEMA sonar_schema AUTHORIZATION sonaruser;"
 
 psql -U postgres -d 'sonar_db' -c "GRANT USAGE, CREATE ON SCHEMA public TO sonaruser"
