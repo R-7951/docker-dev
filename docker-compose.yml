@@ -3,9 +3,14 @@ x-common: &common
   networks:
     - trifecta-bridge
   restart: always
-  
+
 services:
 
+
+
+
+
+#----------- Main Services -----------#
   messaging-kafka:
     <<: *common
     image: confluentinc/cp-kafka:latest
@@ -16,27 +21,25 @@ services:
       - "9093:9093"
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://messaging-kafka:9092,PLAINTEXT_HOST://localhost:9093'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://messaging-kafka:9092,PLAINTEXT_HOST://localhost:9093"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_PROCESS_ROLES: "broker,controller"
       KAFKA_NODE_ID: 1
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@messaging-kafka:29093'
-      KAFKA_LISTENERS: 'PLAINTEXT://messaging-kafka:9092,CONTROLLER://messaging-kafka:29093,PLAINTEXT_HOST://0.0.0.0:9093'
-      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
-      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
-      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
-      KAFKA_LOG4J_LOGGERS: 'org.apache.kafka.image.loader.MetadataLoader=WARN'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@messaging-kafka:29093"
+      KAFKA_LISTENERS: "PLAINTEXT://messaging-kafka:9092,CONTROLLER://messaging-kafka:29093,PLAINTEXT_HOST://0.0.0.0:9093"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      KAFKA_LOG4J_LOGGERS: "org.apache.kafka.image.loader.MetadataLoader=WARN"
     volumes:
       - kafka-data:/var/lib/kafka/data:rw
-
     # profiles:
     #   - donotstart
-
 
 
 
@@ -45,7 +48,7 @@ services:
     container_name: db-postgres
     image: bitnami/postgresql:latest
     volumes:
-      - 'postgresql_data:/bitnami/postgresql'
+      - "postgresql_data:/bitnami/postgresql"
       - ./conf/postgres/init.sh:/docker-entrypoint-initdb.d/init-database.sh
     ports:
       - "5432:5432"
@@ -56,9 +59,57 @@ services:
       # - POSTGRESQL_DATABASE=device_registry
       # - POSTGRESQL_USERNAME=pgdevregsvc
       # - POSTGRESQL_PASSWORD=pgdevregpass
-      
     # profiles:
     #  - donotstart
+
+
+
+  messaging-mqtt:
+    <<: *common
+    image: emqx/emqx:5.0.25
+    container_name: messaging-mqtt
+    volumes:
+      - ./conf/emqx:/opt/emqx/etc/certs/
+      - ./conf/emqx/emqx.conf:/opt/emqx/etc/emqx.conf
+    ports:
+      - 8080:8080
+      - 8083:8083
+      - 18083:18083
+      - 1883:1883
+      - 8081:8081
+      - 8883:8883
+      - 8084:8084
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx_ctl", "status"]
+      interval: 5s
+      timeout: 25s
+      retries: 5
+    # profiles:
+    #   - donotstart
+
+
+
+
+  trifecta-message-bridge:
+    <<: *common
+    image: message-bridge
+    container_name: trifecta-messagebridge
+    environment:
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=messaging-kafka:9092
+      - KAFKA_BOOTSTRAPADDRESS=messaging-kafka:9092
+      - MQTT_ADDRESS=messaging-mqtt:8083
+    depends_on:
+      - messaging-kafka
+      - messaging-mqtt
+    # profiles:
+    #   - donotstart
+
+
+
+
+
+#----------- GUI Tools -----------#
+
 
 
   pgadmin4:
@@ -69,18 +120,17 @@ services:
       - pgadmin_data:/var/lib/pgadmin:rw
       - ./conf/pgadmin/servers.json:/pgadmin4/servers.json
       - ./conf/pgadmin/pgpass:/pgadmin4/pgpass
-
     ports:
       - "85:80"
     environment:
       - PGADMIN_DEFAULT_EMAIL=pgadmin4@pgadmin.org
       - PGADMIN_DEFAULT_PASSWORD=admin
       - PGADMIN_CONFIG_SERVER_MODE=False
-
     # profiles:
     #  - donotstart
 
-      
+
+
   kafka-ui:
     <<: *common
     image: provectuslabs/kafka-ui:latest
@@ -100,87 +150,65 @@ services:
       - kafka.clusters.0.serde.0.topicKeysPattern=site-publish
       - kafka.clusters.0.serde.0.topicValuesPattern=site-publish
       - kafka.clusters.0.serde.0.properties.protobufMessageNameByTopic.site-publish=SiteNotification
-
-
-    depends_on:
-     - messaging-kafka
-     
-    # profiles:
-    #  - donotstart
-     
-  messaging-mqtt:
-    <<: *common
-    image: emqx/emqx:5.0.25
-    container_name: messaging-mqtt
-    volumes:
-      - ./conf/emqx:/opt/emqx/etc/certs/ 
-      - ./conf/emqx/emqx.conf:/opt/emqx/etc/emqx.conf
-    ports:
-      - 8080:8080
-      - 8083:8083
-      - 18083:18083  
-      - 1883:1883
-      - 8081:8081
-      - 8883:8883
-      - 8084:8084
-
-    healthcheck:
-      test: ["CMD", "/opt/emqx/bin/emqx_ctl", "status"]
-      interval: 5s
-      timeout: 25s
-      retries: 5
-
-    # profiles:
-    #   - donotstart
-
-     
-  trifecta-message-bridge:
-    <<: *common
-    image: message-bridge
-    container_name: trifecta-messagebridge
-    environment:
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=messaging-kafka:9092
-      - KAFKA_BOOTSTRAPADDRESS=messaging-kafka:9092
-      - MQTT_ADDRESS=messaging-mqtt:8083
     depends_on:
       - messaging-kafka
-      - messaging-mqtt
-      
     # profiles:
-    #   - donotstart
+    #  - donotstart
 
 
 
 
 
-
-
-##--- Metrics ----
+#----------- Metrics -----------#
 
 
   grafana:
     <<: *common
+    container_name: grafana
     image: docker.io/bitnami/grafana:latest
     ports:
-      - '3000:3000'
+      - "3000:3000"
     environment:
-      - 'GF_SECURITY_ADMIN_PASSWORD=bitnami'
+      - "GF_SECURITY_ADMIN_PASSWORD=bitnami"
     volumes:
       - grafana_data:/opt/bitnami/grafana/data
-
     profiles:
       - donotstart
 
 
+      
   prometheus:
     <<: *common
+    container_name: prometheus
     image: docker.io/bitnami/prometheus:latest
     ports:
-      - '9090:9090'
+      - "9090:9090"
     volumes:
       - ./conf/prometheus/prometheus.yml:/opt/bitnami/prometheus/conf/prometheus.yml
       - prom_data:/opt/bitnami/prometheus/data
+    profiles:
+      - donotstart
 
+
+  postgres-exporter:
+    <<: *common
+    container_name: postgres-exporter
+    image: bitnami/postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: 'postgresql://postgres:bitnami@db-postgres:5432/postgres?sslmode=disable'
+    ports:
+      - '9187:9187'
+    profiles:
+      - donotstart
+
+
+  kafka-exporter:
+    <<: *common
+    container_name: kafka-exporter
+    image: bitnami/kafka-exporter
+    command: '--kafka.server=messaging-kafka:9092'
+    ports:
+      - '9308:9308'
     profiles:
       - donotstart
 
@@ -194,12 +222,15 @@ services:
       - 8087:8087
     environment:
       - server.port=8087
-
     profiles:
       - donotstart
 
 
-##--- Metrics ----
+
+
+
+#----------- Sonar -----------#
+
 
 
   sonarqube_orig:
@@ -220,6 +251,7 @@ services:
       - "9000:9000"
     profiles:
       - donotstart
+
 
 
   sonarqube:
@@ -244,29 +276,10 @@ services:
 
 
 
+#----------- Spring apps -----------#
 
 
 
-
-
-
-
-
-
-
-         
-  db-mongo:
-    <<: *common
-    image: bitnami/mongodb:latest
-    container_name: db-mongo
-    volumes:
-      - mongo-db:/bitnami/mongodb
-    ports:
-      - 27017:27017
-    profiles:
-     - donotstart
-      
-      
 
   trifecta-device-registry:
     <<: *common
@@ -285,12 +298,12 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db-postgres:5432/device_registry
       - SPRING_DATASOURCE_USERNAME=pgdevregsvc
       - SPRING_DATASOURCE_PASSWORD=pgdevregpass
-
     depends_on:
       - messaging-kafka
-      
     profiles:
       - donotstart
+
+
 
   trifecta-license-service:
     <<: *common
@@ -306,33 +319,11 @@ services:
       - hostName=LAPTOP-4OVO3VIG
       - clsId=
     depends_on:
-      - db-mongo
       - messaging-kafka
-      
     profiles:
       - donotstart
 
-
-  file-server:
-    <<: *common
-    image: file-server
-    container_name: trifecta-file-server
-    environment:
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=messaging-kafka:9092
-      - SPRING_DATA_MONGODB_HOST=db-mongo
-      - SPRING_DATA_MONGODB_PORT=27017
-    volumes:
-      #- ./files:/home/trif-user/files
-      - nginx-files:/home/trif-user/files
-    ports:
-      - 8090:8090
-    depends_on:
-      - db-mongo
-      - messaging-kafka
       
-    profiles:
-      - donotstart
-
   nginx:
     <<: *common
     container_name: web-nginx
@@ -342,22 +333,17 @@ services:
     volumes:
       # - nginx-files:/app/files
       - ./conf/nginx/certs:/opt/bitnami/nginx/certs
-    #  - ./conf/nginx/files:/app/files  
+      #  - ./conf/nginx/files:/app/files
       - C:\Users\cptma\Documents\Github\trifecta-devicereg\files:/app/files
       - ./conf/nginx/ftp:/app/ftp/
       - ./conf/nginx/index.html:/app/index.html
       - ./conf/nginx/my_server_block.conf:/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
     #  - ./config/my_server_block.conf :/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
-    
     profiles:
       - donotstart
 
 
 
-
-
-
-      
 volumes:
   zookeeper-data:
     driver: local
@@ -384,6 +370,8 @@ volumes:
   prom_data:
     driver: local
 
+
+
 networks:
   trifecta-bridge:
-        driver: bridge
+    driver: bridge
