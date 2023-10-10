@@ -343,6 +343,25 @@ services:
       - donotstart
 
 
+  nginx_orig:
+    <<: *common
+    container_name: web-nginx
+    image: bitnami/nginx
+    ports:
+      - 80:8080
+    # volumes:
+    #   # - nginx-files:/app/files
+    #   - ./conf/nginx/certs:/opt/bitnami/nginx/certs
+    #   #  - ./conf/nginx/files:/app/files
+    #   - C:\Users\cptma\Documents\Github\trifecta-devicereg\files:/app/files
+    #   - ./conf/nginx/ftp:/app/ftp/
+    #   - ./conf/nginx/index.html:/app/index.html
+    #   - ./conf/nginx/my_server_block.conf:/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
+    #  - ./config/my_server_block.conf :/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
+    # profiles:
+    #   - donotstart
+
+
 
 volumes:
   zookeeper-data:
