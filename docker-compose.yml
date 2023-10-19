@@ -334,7 +334,7 @@ services:
       # - nginx-files:/app/files
       - ./conf/nginx/certs:/opt/bitnami/nginx/certs
       #  - ./conf/nginx/files:/app/files
-      - C:\Users\cptma\Documents\Github\trifecta-devicereg\files:/app/files
+      #- C:\Users\cptma\Documents\Github\trifecta-devicereg\files:/app/files
       - ./conf/nginx/ftp:/app/ftp/
       - ./conf/nginx/index.html:/app/index.html
       - ./conf/nginx/my_server_block.conf:/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
