@@ -8,7 +8,7 @@ services:
 
 
 
-
+#sue this export EXTERNAL_IP=$(hostname -I | awk '{print $1}')
 
 #----------- Main Services -----------#
   messaging-kafka:
@@ -30,7 +30,7 @@ services:
       KAFKA_PROCESS_ROLES: "broker,controller"
       KAFKA_NODE_ID: 1
       KAFKA_CONTROLLER_QUORUM_VOTERS: "1@messaging-kafka:29093"
-      KAFKA_LISTENERS: "PLAINTEXT://messaging-kafka:9092,CONTROLLER://messaging-kafka:29093,PLAINTEXT_HOST://0.0.0.0:9093"
+      KAFKA_LISTENERS: "PLAINTEXT://messaging-kafka:9092,CONTROLLER://messaging-kafka:29093,PLAINTEXT_HOST://${EXTERNAL_IP}:9093"
       KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
       KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
       KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
