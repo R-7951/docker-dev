@@ -88,7 +88,16 @@ services:
     #   - donotstart
 
 
-
+  db-mongo:
+    <<: *common
+    image: bitnami/mongodb:latest
+    container_name: db-mongo
+    volumes:
+      - mongo-db:/bitnami/mongodb
+    ports:
+      - 27017:27017
+    # profiles:
+    #  - donotstart
 
   trifecta-message-bridge:
     <<: *common
