@@ -109,11 +109,11 @@ services:
     #   context: ./
     command: php artisan queue:work --daemon --tries=3 --timeout=10
     ports:
-      - "8084:80"
+      - "8085:80"
     environment:
       - APP_ENV=dev
       - APP_DEBUG=true
-      - APP_URL=http://localhost:8084
+      - APP_URL=http://localhost:8085
       - APP_LOG=errorlog
       - DB_CONNECTION=sqlite
       - REDIS_HOST=redis
