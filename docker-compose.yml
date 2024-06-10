@@ -59,8 +59,8 @@ services:
       # - POSTGRESQL_DATABASE=device_registry
       # - POSTGRESQL_USERNAME=pgdevregsvc
       # - POSTGRESQL_PASSWORD=pgdevregpass
-    profiles:
-     - donotstart
+    # profiles:
+    #  - donotstart
 
 
 
@@ -99,23 +99,76 @@ services:
     # profiles:
     #  - donotstart
 
-  trifecta-message-bridge:
-    <<: *common
-    image: message-bridge
-    container_name: trifecta-messagebridge
+
+
+
+  webhook:
+    image: "webhooksite/webhook.site"
+    # Enable build for development:
+    # build:
+    #   dockerfile: Dockerfile
+    #   context: ./
+    command: php artisan queue:work --daemon --tries=3 --timeout=10
+    ports:
+      - "8084:80"
     environment:
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=messaging-kafka:9092
-      - KAFKA_BOOTSTRAPADDRESS=messaging-kafka:9092
-      - MQTT_ADDRESS=messaging-mqtt:8083
+      - APP_ENV=dev
+      - APP_DEBUG=true
+      - APP_URL=http://localhost:8084
+      - APP_LOG=errorlog
+      - DB_CONNECTION=sqlite
+      - REDIS_HOST=redis
+      - BROADCAST_DRIVER=redis
+      - CACHE_DRIVER=redis
+      - QUEUE_DRIVER=redis
+      - ECHO_HOST_MODE=path
     depends_on:
-      - messaging-kafka
-      - messaging-mqtt
-    profiles:
-      - donotstart
+      - redis
+    # profiles:
+    #   - donotstart
 
 
 
+  redis:
+    image: "redis:alpine"
+    # profiles:
+    #   - donotstart
 
+
+  laravel-echo-server:
+    image: "webhooksite/laravel-echo-server"
+    environment:
+      - LARAVEL_ECHO_SERVER_AUTH_HOST=http://webhook
+      - LARAVEL_ECHO_SERVER_HOST=0.0.0.0
+      - LARAVEL_ECHO_SERVER_PORT=6001
+      - ECHO_REDIS_PORT=6379
+      - ECHO_REDIS_HOSTNAME=redis
+      - ECHO_PROTOCOL=http
+      - ECHO_ALLOW_CORS=true
+      - ECHO_ALLOW_ORIGIN=*
+      - ECHO_ALLOW_METHODS=*
+      - ECHO_ALLOW_HEADERS=*
+    # profiles:
+    #   - donotstart
+
+
+  nginx_orig:
+    <<: *common
+    container_name: web-nginx
+    image: bitnami/nginx
+    ports:
+      - 80:8080
+    # volumes:
+    #   # - nginx-files:/app/files
+    #   - ./conf/nginx/certs:/opt/bitnami/nginx/certs
+    #   #  - ./conf/nginx/files:/app/files
+    #   - C:\Users\cptma\Documents\Github\trifecta-devicereg\files:/app/files
+    #   - ./conf/nginx/ftp:/app/ftp/
+    #   - ./conf/nginx/index.html:/app/index.html
+    #   - ./conf/nginx/my_server_block.conf:/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
+    #  - ./config/my_server_block.conf :/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
+    # profiles:
+    #   - donotstart
 
 #----------- GUI Tools -----------#
 
@@ -135,8 +188,8 @@ services:
       - PGADMIN_DEFAULT_EMAIL=pgadmin4@pgadmin.org
       - PGADMIN_DEFAULT_PASSWORD=admin
       - PGADMIN_CONFIG_SERVER_MODE=False
-    profiles:
-     - donotstart
+    # profiles:
+    #  - donotstart
 
 
 
@@ -332,6 +385,22 @@ services:
     profiles:
       - donotstart
 
+
+  trifecta-message-bridge:
+    <<: *common
+    image: message-bridge
+    container_name: trifecta-messagebridge
+    environment:
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=messaging-kafka:9092
+      - KAFKA_BOOTSTRAPADDRESS=messaging-kafka:9092
+      - MQTT_ADDRESS=messaging-mqtt:8083
+    depends_on:
+      - messaging-kafka
+      - messaging-mqtt
+    profiles:
+      - donotstart
+
+
       
   nginx:
     <<: *common
@@ -351,24 +420,6 @@ services:
     profiles:
       - donotstart
 
-
-  nginx_orig:
-    <<: *common
-    container_name: web-nginx
-    image: bitnami/nginx
-    ports:
-      - 80:8080
-    # volumes:
-    #   # - nginx-files:/app/files
-    #   - ./conf/nginx/certs:/opt/bitnami/nginx/certs
-    #   #  - ./conf/nginx/files:/app/files
-    #   - C:\Users\cptma\Documents\Github\trifecta-devicereg\files:/app/files
-    #   - ./conf/nginx/ftp:/app/ftp/
-    #   - ./conf/nginx/index.html:/app/index.html
-    #   - ./conf/nginx/my_server_block.conf:/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
-    #  - ./config/my_server_block.conf :/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
-    # profiles:
-    #   - donotstart
 
 
 
