@@ -205,7 +205,6 @@ services:
     environment:
       - KAFKA_CLUSTERS_0_NAME=messaging-kafka
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=messaging-kafka:9092
-
       - kafka.clusters.0.serde.0.name=ProtobufFile
       - kafka.clusters.0.serde.0.properties.protobufFilesDir=/protofiles/
       - kafka.clusters.0.serde.0.topicKeysPattern=site-publish
