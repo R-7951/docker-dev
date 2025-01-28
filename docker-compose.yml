@@ -68,7 +68,7 @@ services:
     image: emqx/emqx:latest-elixir
     container_name: messaging-mqtt
     volumes:
-      - ./conf/emqx:/opt/emqx/etc/certs/
+      - /home/zebra/Github/certs_48.178:/opt/emqx/etc/certs/
       - ./conf/emqx/emqx.conf:/opt/emqx/etc/emqx.conf
     ports:
       #- 8080:8080
@@ -156,15 +156,15 @@ services:
     container_name: web-nginx
     image: bitnami/nginx
     ports:
-      - 80:8080
-    # volumes:
-    #   # - nginx-files:/app/files
-    #   - ./conf/nginx/certs:/opt/bitnami/nginx/certs
-    #   #  - ./conf/nginx/files:/app/files
+      - 443:8443
+    volumes:
+    #  - nginx-files:/app/files
+      - ./conf/nginx_orig/certs:/opt/bitnami/nginx/certs
+      # - ./conf/nginx/files:/app/files
     #   - C:\Users\cptma\Documents\Github\trifecta-devicereg\files:/app/files
     #   - ./conf/nginx/ftp:/app/ftp/
     #   - ./conf/nginx/index.html:/app/index.html
-    #   - ./conf/nginx/my_server_block.conf:/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
+      - ./conf/nginx_orig/my_server_block.conf:/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
     #  - ./config/my_server_block.conf :/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
     # profiles:
     #   - donotstart
@@ -418,7 +418,6 @@ services:
     #  - ./config/my_server_block.conf :/opt/bitnami/nginx/conf/server_blocks/my_server_block.conf
     profiles:
       - donotstart
-
 
 
 
